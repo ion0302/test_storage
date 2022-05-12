@@ -44,6 +44,7 @@ class MediaAPIStorage(Storage):
         response.raise_for_status()
         return ContentFile(content=response.content, name=Path(name).name)
 
+
     def _save(self, name, content, max_length=None):
         """
         Save new content to the file specified by name. The content should be

@@ -7,12 +7,17 @@ from django.core.files.temp import NamedTemporaryFile
 from records.models import Record
 from records.serializers import RecordSplitSerializer
 
+AudioSegment.converter = "C:\\ffmpeg\\ffmpeg\\bin\\ffmpeg.exe"
+AudioSegment.ffmpeg = "C:\\ffmpeg\\ffmpeg\\bin\\ffmpeg.exe"
+AudioSegment.ffprobe = "C:\\ffmpeg\\ffmpeg\\bin\\ffprobe.exe"
+
 
 def make_temp_file(content, suffix=".mp3"):
     temp_file = NamedTemporaryFile('wb', suffix=suffix)
     temp_file.write(content)
     temp_file.seek(0)
     return temp_file
+
 
 def temp_file_generation(file):
     """
@@ -22,6 +27,7 @@ def temp_file_generation(file):
     """
     temp_file = make_temp_file(file)
     return AudioSegment.from_mp3(temp_file.name)
+
 
 def crop_file(file, from_time=0, to_time=0):
     """
@@ -56,16 +62,28 @@ class RecordDownloadView(APIView):
         file = record.file.open()
         content = file.read()
 
-        # if any(valid):
-        #     content = crop_file(content, **valid)
-        response = HttpResponse(content, content_type=bytes)
+        if any(valid):
+            content = crop_file(content, **valid)
+        response = HttpResponse(content, content_type='audio/mpeg')
         response['Content-Disposition'] = f'attachment; filename={file.file.name}'
+
         return response
 
 
+class RecordSplitView(APIView):
+    """
+    Class that handles splitting mp3 file into a smaller part
+    """
+    CLASS_TITLE = "Split record"
 
-
-
-
-
-
+    @serialize_decorator(RecordSplitSerializer)
+    def get(self, request, pk):
+        record = Record.objects.first()
+        valid = request.valid
+        # media_response = record_download(record)
+        file = record.file.open()
+        content = file.read()
+        new_file = crop_file(content, **valid)
+        response = HttpResponse(new_file, content_type='audio/mpeg')
+        response['Content-Disposition'] = 'attachment; filename="split.mp3"'
+        return response
